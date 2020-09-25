@@ -46,7 +46,6 @@ for branch in "${tracked_branches[@]}"; do
       # check if wip_tables contains current table
       # containing means that we have some change with same table on other branch
       if [[ " ${wip_tables[@]} " =~ " ${table} " ]]; then
-        conflict=true
         echo "Somebody works on db table: ${table}, on branch: ${branch}"
       else
         wip_tables+=("${table}")
