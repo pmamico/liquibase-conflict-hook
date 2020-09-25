@@ -1,0 +1,61 @@
+#!/bin/bash
+
+wip_tables=()
+tracked_branches=($(git branch -r | grep "feature"))
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+origin_current_branch="origin/"$current_branch
+
+# replace origin/$current_branch with $current_branch in the list
+# because i need to compare the local branch and all other origin
+tracked_branches=("${tracked_branches[@]/$origin_current_branch}")
+tracked_branches=("${current_branch}" "${tracked_branches[@]}")
+
+for branch in "${tracked_branches[@]}"; do
+  # skip if empty
+  if [ "${branch%%*( )}" == "" ] ; then
+    continue
+  fi
+
+  # get git diff but only xml files (liquibase xml)
+  develop_diff_changelogs=($(git diff --name-only develop..${branch} | grep xml))
+
+  # iterate over changelog xml files
+  for xml in "${develop_diff_changelogs}"; do
+    # skip if empty
+    if [ "${xml%%*( )}" == "" ] ; then
+      continue
+    fi
+
+    # examine the xml file but the other branch revision
+    # save the revision as _tmp and clean up later
+    xml_branch_revision=$(git show ${branch}:${xml} > ${xml}_tmp)
+
+    # find talbe changes with xmllint
+    # xpath for views: 'string(//@viewName)'
+    tables=($(xmllint --xpath 'string(//@tableName)' ${xml}_tmp --nowarning))
+
+    # clean up _tmp file
+    xml_tmp_clean=$(rm ${xml}_tmp)
+
+    for table in "${tables[@]}"; do
+      # skip if empty
+      if [ "${table}" == "" ]; then
+         continue
+      fi
+
+      # check if wip_tables contains current table
+      # containing means that we have some change with same table on other branch
+      if [[ " ${wip_tables[@]} " =~ " ${table} " ]]; then
+        conflict=true
+        echo "Somebody works on db table: ${table}, on branch: ${branch}"
+      else
+        wip_tables+=("${table}")
+      fi
+    done
+  done
+done
+
+printf "\nFYI WIP tables on all branches\n"
+for table in "${wip_tables[@]}"; do
+  echo ${table}
+done
