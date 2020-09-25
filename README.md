@@ -1,6 +1,6 @@
 ### Story
 
-Detecting database changes in different git branches and alert on conflict (changing same database table).
+Detecting database changes on parallel git branches and alert on conflict (changing same database table).
 ![img](img.png)
 
 ### Requirements
